@@ -10,7 +10,7 @@ pipeline {
                     echo "Op-2133506a-S1: QA web server is backup and updated"
                     sh 'docker rmi -f qa-bkup-image || true'
                     sh 'docker commit 2133506a-qa-svr qa-bkup-image'
-                    sh 'bolt script run /operate/2133506a/2133506a.script --targets 2133506a-qa-svr.localdomain --no-host-key-check'
+                    sh 'bolt script run /operate/2133506a/2133506a.script -t docker://2133506a-qa-svr'
                 }
             }
         }
@@ -30,13 +30,21 @@ pipeline {
                 script {
                     def qaStatus = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:33200', returnStdout: true).trim()
                     if (qaStatus == "200") {
-                        echo "Op-2133506a-S3: Proceed to Prod server"
+                        echo "Op-2133506a-S3: Proceed to approval step"
                     } else {
                         echo "Op-2133506a-S3: QA server rolled back"
                         sh 'docker stop 2133506a-qa-svr && docker rm 2133506a-qa-svr'
                         sh 'docker run -d --name 2133506a-qa-svr -p 33200:80 qa-bkup-image'
                         error('Aborting')
                     }
+                }
+            }
+        }
+
+        stage('Op-2133506a-Approval') {
+            steps {
+                script {
+                    input(message: 'QA passed. Approve deployment to Prod?', ok: 'Deploy')
                 }
             }
         }
@@ -47,7 +55,7 @@ pipeline {
                     echo "Op-2133506a-S4: PROD web server is backup and updated"
                     sh 'docker rmi -f prod-bkup-image || true'
                     sh 'docker commit 2133506a-prod-svr prod-bkup-image'
-                    sh 'bolt script run /operate/2133506a/2133506a.script --targets 2133506a-prod-svr.localdomain --no-host-key-check'
+                    sh 'bolt script run /operate/2133506a/2133506a.script -t docker://2133506a-prod-svr'
                 }
             }
         }
@@ -80,7 +88,7 @@ pipeline {
         
         stage('Op-2133506a-S7') {
             steps {
-                echo "Op2133506aS7: Prod server ready to serve."
+                echo "Op-2133506a-S7: Prod server ready to serve."
             }
         }
     }
