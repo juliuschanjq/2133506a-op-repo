@@ -1,0 +1,87 @@
+pipeline {
+    agent any
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+    stages {
+        stage('Op-2133506a-S1') {
+            steps {
+                script {
+                    echo "Op-2133506a-S1: QA web server is backup and updated"
+                    sh 'docker rmi -f qa-bkup-image || true'
+                    sh 'docker commit 2133506a-qa-svr qa-bkup-image'
+                    sh 'bolt script run /operate/2133506a/2133506a.script --targets 2133506a-qa-svr.localdomain --no-host-key-check'
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S2') {
+            steps {
+                script {
+                    echo "Op-2133506a-S2: Checking QA server after update"
+                    sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-file'
+                    sh 'cat /tmp/qa-result-file'
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S3') {
+            steps {
+                script {
+                    def qaStatus = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:33200', returnStdout: true).trim()
+                    if (qaStatus == "200") {
+                        echo "Op-2133506a-S3: Proceed to Prod server"
+                    } else {
+                        echo "Op-2133506a-S3: QA server rolled back"
+                        sh 'docker stop 2133506a-qa-svr && docker rm 2133506a-qa-svr'
+                        sh 'docker run -d --name 2133506a-qa-svr -p 33200:80 qa-bkup-image'
+                        error('Aborting')
+                    }
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S4') {
+            steps {
+                script {
+                    echo "Op-2133506a-S4: PROD web server is backup and updated"
+                    sh 'docker rmi -f prod-bkup-image || true'
+                    sh 'docker commit 2133506a-prod-svr prod-bkup-image'
+                    sh 'bolt script run /operate/2133506a/2133506a.script --targets 2133506a-prod-svr.localdomain --no-host-key-check'
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S5') {
+            steps {
+                script {
+                    echo "Op-2133506a-S5: Checking Prod server after update"
+                    sh 'curl -Is http://localhost:33500 | head -n 1 > /tmp/prod-result-file'
+                    sh 'cat /tmp/prod-result-file'
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S6') {
+            steps {
+                script {
+                    def prodStatus = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:33500', returnStdout: true).trim()
+                    if (prodStatus == "200") {
+                        echo "Op-2133506a-S6: Release to production"
+                    } else {
+                        echo "Op-2133506a-S6: Prod server rolled back"
+                        sh 'docker stop 2133506a-prod-svr && docker rm 2133506a-prod-svr'
+                        sh 'docker run -d --name 2133506a-prod-svr -p 33500:80 prod-bkup-image'
+                        error('Aborting')
+                    }
+                }
+            }
+        }
+        
+        stage('Op-2133506a-S7') {
+            steps {
+                echo "Op2133506aS7: Prod server ready to serve."
+            }
+        }
+    }
+}
