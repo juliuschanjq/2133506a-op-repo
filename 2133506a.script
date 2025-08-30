@@ -8,7 +8,9 @@ puppet resource file /operate/2133506a ensure=absent force=true
 puppet resource file /operate ensure=directory
 puppet resource file /operate/2133506a ensure=directory
 
+# Clone the repo to get the new index.html
 cd /operate/2133506a
 git clone https://github.com/juliuschanjq/2133506a-op-repo.git
 
+# Copy the new index.html to the web server root
 cp -p /operate/2133506a/2133506a-op-repo/index-op-2133506a.html /var/www/html/index.html
