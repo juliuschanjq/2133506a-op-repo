@@ -7,7 +7,7 @@ pipeline {
                     sh 'docker rm -f qa-bkup-container 2>/dev/null || true'
                     sh 'docker rmi qa-bkup-image 2>/dev/null || true'
                     sh 'docker commit 2133506a-qa-svr qa-bkup-image'
-                    sh "bolt script run /var/jenkins_home/2133506a-script --targets 2133506a-qa-svr.localdomain"
+                    sh "bolt script run /var/jenkins_home/2133506a-script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
                     echo "Op-2133506a-S1: QA web server is backup and updated"
                 }
             }
@@ -17,8 +17,6 @@ pipeline {
                 script {
                     sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-file'
                     def qaStatus = sh(script: "cat /tmp/qa-result-file | tr -d '\\r'", returnStdout: true).trim()
-                    echo "QA STATUS: '${qaStatus}'"
-
                     if (qaStatus != "HTTP/1.1 200 OK") {
                         sh 'docker stop 2133506a-qa-svr 2>/dev/null || true'
                         sh 'docker rm -f 2133506a-qa-svr 2>/dev/null || true'
@@ -60,7 +58,7 @@ pipeline {
                     sh 'docker rm -f prod-bkup-container 2>/dev/null || true'
                     sh 'docker rmi prod-bkup-image 2>/dev/null || true'
                     sh 'docker commit 2133506a-prod-svr prod-bkup-image'
-                    sh "bolt script run /var/jenkins_home/2133506a-script --targets 2133506a-prod-svr.localdomain"
+                    sh "bolt script run /var/jenkins_home/2133506a-script --targets 2133506a-prod-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
                     echo "Op-2133506a-S4: PROD web server is backup and updated"
                 }
             }
@@ -70,8 +68,6 @@ pipeline {
                 script {
                     sh 'curl -Is http://localhost:33500 | head -n 1 > /tmp/prod-result-file'
                     def prodStatus = sh(script: "cat /tmp/prod-result-file | tr -d '\\r'", returnStdout: true).trim()
-                    echo "PROD STATUS: '${prodStatus}'"
-
                     if (prodStatus != "HTTP/1.1 200 OK") {
                         sh 'docker stop 2133506a-prod-svr 2>/dev/null || true'
                         sh 'docker rm -f 2133506a-prod-svr 2>/dev/null || true'
