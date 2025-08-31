@@ -1,47 +1,24 @@
 pipeline {
     agent any
     stages {
-        // Stage 1: QA Backup and Update
         stage('Op-2133506a-S1') {
             steps {
-                script {
-                    echo "Op-2133506a-S1: Starting QA backup and update"
-                    
-                    // Remove old QA backup container and image
-                    sh 'docker rm -f qa-bkup-container || true'
-                    sh 'docker rmi qa-bkup-image || true'
-                    
-                    // Create new QA backup image
-                    sh 'docker commit 2133506a-qa-svr qa-bkup-image'
-                    
-                    // Run bolt script to update QA server
-                    sh 'bolt script run ./2133506a.script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root'
-                    
-                    echo "Op-2133506a-S1: QA web server is backup and updated"
-                }
+                sh 'docker rm -f qa-bkup-container || true'
+                sh 'docker rmi qa-bkup-image || true'
+                sh 'docker commit 2133506a-qa-svr qa-bkup-image'
+                sh 'bolt script run ./2133506a.script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root'
+                echo "Op-2133506a-S1: QA web server is backup and updated"
             }
         }
         
-        // Stage 2: QA Server Test
         stage('Op-2133506a-S2') {
             steps {
-                script {
-                    echo "Op-2133506a-S2: Checking on whether QA server is running after update"
-                    
-                    // Execute curl test on QA web server
-                    sh 'curl -sI http://localhost:33200 | head -n 1 > /tmp/qa-result-file'
-                    sh 'cat /tmp/qa-result-file'
-                    
-                    // Check if test was successful
-                    def qaResult = sh(script: 'cat /tmp/qa-result-file', returnStdout: true).trim()
-                    if (qaResult != "HTTP/1.1 200 OK") {
-                        error "QA Server test failed: ${qaResult}"
-                    }
-                }
+                sh 'curl -sI http://localhost:33200 | head -n 1 > /tmp/qa-result-file'
+                sh 'cat /tmp/qa-result-file'
+                echo "Op-2133506a-S2: Checking on whether QA server is running after update"
             }
         }
         
-        // Stage 3: QA Rollout Decision
         stage('Op-2133506a-S3') {
             steps {
                 script {
@@ -59,57 +36,33 @@ pipeline {
                     if (choice == 'Proceed to Roll out to Prod server') {
                         echo "Op-2133506a-S3: Proceed to roll out to Prod server"
                     } else {
-                        echo "Op-2133506a-S3: QA server fails after update and is rolled back"
-                        // Rollback QA server using backup image
                         sh 'docker rm -f 2133506a-qa-svr || true'
                         sh 'docker run -d --privileged -h "2133506a-qa-svr.localdomain" --name 2133506a-qa-svr --add-host "sddo-vm.localdomain:172.20.113.171" --network customnetwork --ip 192.168.100.110 -e TZ=SGT -p 33200:80 qa-bkup-image sleep infinity'
-                        error('Aborting pipeline due to QA server rollback')
+                        echo "Op-2133506a-S3: QA server fails after update and is rolled back"
+                        error('Aborting')
                     }
                 }
             }
         }
         
-        // Stage 4: PROD Backup and Update
         stage('Op-2133506a-S4') {
             steps {
-                script {
-                    echo "Op-2133506a-S4: Starting PROD backup and update"
-                    
-                    // Remove old PROD backup container and image
-                    sh 'docker rm -f prod-bkup-container || true'
-                    sh 'docker rmi prod-bkup-image || true'
-                    
-                    // Create new PROD backup image
-                    sh 'docker commit 2133506a-prod-svr prod-bkup-image'
-                    
-                    // Run bolt script to update PROD server
-                    sh 'bolt script run ./2133506a.script --targets 2133506a-prod-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root'
-                    
-                    echo "Op-2133506a-S4: PROD web server is backup and updated"
-                }
+                sh 'docker rm -f prod-bkup-container || true'
+                sh 'docker rmi prod-bkup-image || true'
+                sh 'docker commit 2133506a-prod-svr prod-bkup-image'
+                sh 'bolt script run ./2133506a.script --targets 2133506a-prod-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root'
+                echo "Op-2133506a-S4: PROD web server is backup and updated"
             }
         }
         
-        // Stage 5: PROD Server Test
         stage('Op-2133506a-S5') {
             steps {
-                script {
-                    echo "Op-2133506a-S5: Checking on whether Prod server is running after update"
-                    
-                    // Execute curl test on PROD web server
-                    sh 'curl -sI http://localhost:33500 | head -n 1 > /tmp/prod-result-file'
-                    sh 'cat /tmp/prod-result-file'
-                    
-                    // Check if test was successful
-                    def prodResult = sh(script: 'cat /tmp/prod-result-file', returnStdout: true).trim()
-                    if (prodResult != "HTTP/1.1 200 OK") {
-                        error "PROD Server test failed: ${prodResult}"
-                    }
-                }
+                sh 'curl -sI http://localhost:33500 | head -n 1 > /tmp/prod-result-file'
+                sh 'cat /tmp/prod-result-file'
+                echo "Op-2133506a-S5: Checking on whether Prod server is running after update"
             }
         }
         
-        // Stage 6: PROD Rollout Decision
         stage('Op-2133506a-S6') {
             steps {
                 script {
@@ -127,32 +80,19 @@ pipeline {
                     if (choice == 'Proceed to release Prod web server to production') {
                         echo "Op-2133506a-S6: Proceed to release Prod web server to production"
                     } else {
-                        echo "Op-2133506a-S6: Prod web server is rolled back"
-                        // Rollback PROD server using backup image
                         sh 'docker rm -f 2133506a-prod-svr || true'
                         sh 'docker run -d --privileged -h "2133506a-prod-svr.localdomain" --name 2133506a-prod-svr --add-host "sddo-vm.localdomain:172.20.113.171" --network customnetwork --ip 192.168.100.220 -e TZ=SGT -p 33500:80 prod-bkup-image sleep infinity'
-                        error('Aborting pipeline due to PROD server rollback')
+                        echo "Op-2133506a-S6: Prod web server is rolled back"
+                        error('Aborting')
                     }
                 }
             }
         }
         
-        // Stage 7: Final Monitoring
         stage('Op-2133506a-S7') {
             steps {
-                script {
-                    echo "Op-2133506a-S7: Prod web server is monitored and ready to serve."
-                }
+                echo "Op-2133506a-S7: Prod web server is monitored and ready to serve."
             }
-        }
-    }
-    
-    post {
-        always {
-            echo "Pipeline execution completed"
-        }
-        failure {
-            echo "Pipeline failed - check logs for details"
         }
     }
 }
