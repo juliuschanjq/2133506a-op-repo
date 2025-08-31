@@ -12,5 +12,3 @@ puppet resource file /operate/2133506a ensure=directory
 cd /operate/2133506a
 git clone https://github.com/juliuschanjq/2133506a-op-repo.git
 cp -p /operate/2133506a/2133506a-op-repo/index-op-2133506a.html /var/www/html/index.html
-
-puppet resource service apache2 ensure=running
