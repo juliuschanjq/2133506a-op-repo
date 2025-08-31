@@ -4,10 +4,16 @@ pipeline {
         stage('Op-2133506a-S1') {
             steps {
                 script {
+                    // Debug: show workspace contents
+                    sh 'ls -la'
+                    sh 'pwd'
+                    
                     sh 'docker rm -f qa-bkup-container 2>/dev/null || true'
                     sh 'docker rmi qa-bkup-image 2>/dev/null || true'
                     sh 'docker commit 2133506a-qa-svr qa-bkup-image'
-                    // Use workspace-relative path for the script
+                    
+                    // Make script executable and run it
+                    sh 'chmod +x ./2133506a-script'
                     sh "bolt script run ./2133506a-script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
                     echo "Op-2133506a-S1: QA web server is backup and updated"
                 }
@@ -59,7 +65,9 @@ pipeline {
                     sh 'docker rm -f prod-bkup-container 2>/dev/null || true'
                     sh 'docker rmi prod-bkup-image 2>/dev/null || true'
                     sh 'docker commit 2133506a-prod-svr prod-bkup-image'
-                    // Use workspace-relative path for the script
+                    
+                    // Make script executable and run it
+                    sh 'chmod +x ./2133506a-script'
                     sh "bolt script run ./2133506a-script --targets 2133506a-prod-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
                     echo "Op-2133506a-S4: PROD web server is backup and updated"
                 }
