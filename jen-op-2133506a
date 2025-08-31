@@ -13,8 +13,8 @@ pipeline {
                     sh 'docker commit 2133506a-qa-svr qa-bkup-image'
                     
                     // Make script executable and run it
-                    sh 'chmod +x ./2133506a-script'
-                    sh "bolt script run ./2133506a-script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
+                    sh 'chmod +x ./2133506a.script'
+                    sh "bolt script run ./2133506a.script --targets 2133506a-qa-svr.localdomain -u clientadm -p user123 --no-host-key-check --run-as root"
                     echo "Op-2133506a-S1: QA web server is backup and updated"
                 }
             }
