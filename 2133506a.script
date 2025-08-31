@@ -1,14 +1,29 @@
 #!/bin/bash
 
+# Update package lists
 apt-get update
 
-puppet resource package git ensure=present
-puppet resource package apache2 ensure=present
-puppet resource service apache2 ensure=running
+# Install git if not present
+if ! command -v git &> /dev/null; then
+    apt-get install -y git
+fi
 
-puppet resource file /operate/2133506a ensure=absent force=true
-puppet resource file /operate/2133506a ensure=directory
+# Use full path to puppet commands
+/opt/puppetlabs/bin/puppet resource package git ensure=present
+/opt/puppetlabs/bin/puppet resource package apache2 ensure=present
+/opt/puppetlabs/bin/puppet resource service apache2 ensure=running
 
+# Create directory if it doesn't exist
+mkdir -p /operate/2133506a
+
+# Use full path to puppet for file operations
+/opt/puppetlabs/bin/puppet resource file /operate/2133506a ensure=absent force=true
+/opt/puppetlabs/bin/puppet resource file /operate/2133506a ensure=directory
+
+# Clone repository and copy files
 cd /operate/2133506a
 git clone https://github.com/juliuschanjq/2133506a-op-repo.git
 cp -p /operate/2133506a/2133506a-op-repo/index-op-2133506a.html /var/www/html/index.html
+
+# Ensure apache2 is running
+/opt/puppetlabs/bin/puppet resource service apache2 ensure=running
